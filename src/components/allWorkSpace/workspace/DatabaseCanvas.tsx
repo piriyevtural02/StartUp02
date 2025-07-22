@@ -123,6 +123,7 @@ const DatabaseCanvasInner: React.FC<DatabaseCanvasProps> = ({
   const onConnect = useCallback(
     (params: Connection) => {
       if (params.source && params.target && params.sourceHandle && params.targetHandle) {
+        // Create relationship and update schema
         addRelationship({
           sourceTableId: params.source,
           sourceColumnId: params.sourceHandle,
@@ -130,6 +131,19 @@ const DatabaseCanvasInner: React.FC<DatabaseCanvasProps> = ({
           targetColumnId: params.targetHandle,
           cardinality: '1:N',
         });
+        
+        // Broadcast schema change for real-time collaboration
+        if (window.collaborationService) {
+          window.collaborationService.sendSchemaChange({
+            type: 'relationship_added',
+            data: {
+              sourceTableId: params.source,
+              targetTableId: params.target
+            },
+            userId: 'current_user',
+            timestamp: new Date()
+          });
+        }
       }
     },
     [addRelationship]

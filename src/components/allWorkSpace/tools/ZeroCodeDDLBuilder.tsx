@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Plus, Edit, Trash2, Table, Columns, Settings } from 'lucide-react';
 import { useDatabase, Column } from '../../../context/DatabaseContext';
 import { useSubscription } from '../../../context/SubscriptionContext'; // Added subscription context
-import FeatureGate from '../../subscription/FeatureGate'// Added feature gate
+import FeatureGate from '../../subscription/FeatureGate'; // Added feature gate
+import EnhancedTableBuilder from './EnhancedTableBuilder';
 import { v4 as uuidv4 } from 'uuid';
 
 const ZeroCodeDDLBuilder: React.FC = () => {
@@ -10,7 +11,7 @@ const ZeroCodeDDLBuilder: React.FC = () => {
   // Added subscription hooks for plan checking
   const { isLimitReached, setShowUpgradeModal, setUpgradeReason } = useSubscription();
   
-  const [activeModal, setActiveModal] = useState<'create' | 'alter' | 'drop' | null>(null);
+  const [activeModal, setActiveModal] = useState<'create' | 'alter' | 'drop' | 'enhanced' | null>(null);
   const [selectedTable, setSelectedTable] = useState<string>('');
   const [tableForm, setTableForm] = useState({
     name: '',
@@ -188,6 +189,18 @@ const ZeroCodeDDLBuilder: React.FC = () => {
           </button>
 
           <button
+            onClick={() => setActiveModal('enhanced')}
+            className="flex items-center gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors duration-200"
+          >
+            <div className="w-10 h-10 bg-blue-100 dark:bg-blue-800 rounded-lg flex items-center justify-center">
+              <Database className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div className="text-left">
+              <div className="font-medium text-blue-800 dark:text-blue-200">Enhanced Table Builder</div>
+              <div className="text-sm text-blue-600 dark:text-blue-400">Advanced table creation with FK validation</div>
+            </div>
+          </button>
+          <button
             onClick={() => currentSchema.tables.length > 0 && openAlterModal(currentSchema.tables[0].id)}
             disabled={currentSchema.tables.length === 0}
             className="flex items-center gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -292,6 +305,25 @@ const ZeroCodeDDLBuilder: React.FC = () => {
       {/* Modals */}
       {activeModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          {activeModal === 'enhanced' && (
+            <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Enhanced Table Builder
+                </h3>
+                <button
+                  onClick={() => setActiveModal(null)}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+              <div className="p-6">
+                <EnhancedTableBuilder />
+              </div>
+            </div>
+          )}
+          
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             {activeModal === 'create' && (
               <>

@@ -4,12 +4,13 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"npm run server\" \"vite\"",
+    "dev": "concurrently \"npm run server\" \"npm run ws-server\" \"vite\"",
     "build": "vite build",
     "lint": "eslint .",
     "server": "cross-env SERVER_PORT=5000 node server.cjs",
+    "ws-server": "node server/websocket.js",
     "preview": "vite preview",
-    "start": "node server.cjs"
+    "start": "concurrently \"node server.cjs\" \"node server/websocket.js\""
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

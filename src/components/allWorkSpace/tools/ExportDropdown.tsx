@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { Download, ChevronDown, FileText, Lock } from 'lucide-react';
 import { useDatabase } from '../../../context/DatabaseContext';
 import { useSubscription } from '../../../context/SubscriptionContext'; // Added subscription context
-import FeatureGate from '../../subscription/FeatureGate'; // Added feature gate
+import SmartExportManager from './SmartExportManager';
 
 const ExportDropdown: React.FC = () => {
   const { exportSchema, currentSchema } = useDatabase();
   const { canUseFeature, setShowUpgradeModal, setUpgradeReason } = useSubscription(); // Added subscription hooks
   const [isOpen, setIsOpen] = useState(false);
+  const [showSmartExport, setShowSmartExport] = useState(false);
 
   const exportFormats = [
     { id: 'mysql', name: 'MySQL', icon: '🐬' },
@@ -15,6 +16,8 @@ const ExportDropdown: React.FC = () => {
     { id: 'sqlserver', name: 'SQL Server', icon: '🏢' },
     { id: 'oracle', name: 'Oracle', icon: '🔴' },
     { id: 'mongodb', name: 'MongoDB', icon: '🍃' },
+    { id: 'json', name: 'JSON Schema', icon: '📄' },
+    { id: 'csv', name: 'CSV Export', icon: '📊' }
   ];
 
   const handleExport = (format: string) => {
@@ -26,12 +29,46 @@ const ExportDropdown: React.FC = () => {
       return;
     }
 
-    const script = exportSchema(format);
-    const blob = new Blob([script], { type: 'text/plain' });
+    let content = '';
+    let extension = 'sql';
+    
+    if (format === 'json') {
+      content = JSON.stringify({
+        schema: {
+          name: currentSchema.name,
+          tables: currentSchema.tables.map(table => ({
+            name: table.name,
+            columns: table.columns.map(col => ({
+              name: col.name,
+              type: col.type,
+              nullable: col.nullable,
+              primaryKey: col.isPrimaryKey
+            }))
+          }))
+        }
+      }, null, 2);
+      extension = 'json';
+    } else if (format === 'csv') {
+      content = 'Table,Column,Type,Nullable,Primary Key\n';
+      currentSchema.tables.forEach(table => {
+        table.columns.forEach(col => {
+          content += `${table.name},${col.name},${col.type},${col.nullable ? 'Yes' : 'No'},${col.isPrimaryKey ? 'Yes' : 'No'}\n`;
+        });
+      });
+      extension = 'csv';
+    } else {
+      content = exportSchema(format);
+    }
+    
+    // Smart filename based on project name
+    const projectName = currentSchema.name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    const filename = `${projectName}.${extension}`;
+    
+    const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${currentSchema.name.toLowerCase().replace(/\s+/g, '_')}_${format}.sql`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -40,7 +77,8 @@ const ExportDropdown: React.FC = () => {
   };
 
   return (
-    <div className="relative">
+    <>
+      <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`w-full flex items-center justify-between gap-2 px-4 py-3 rounded-lg transition-colors duration-200 font-medium ${
@@ -63,6 +101,15 @@ const ExportDropdown: React.FC = () => {
         <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
+      {canUseFeature('canExportSQL') && (
+        <button
+          onClick={() => setShowSmartExport(true)}
+          className="w-full mt-2 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-200 text-sm font-medium"
+        >
+          <FileText className="w-4 h-4" />
+          Smart Export
+        </button>
+      )}
       {/* Show upgrade prompt for free users */}
       {!canUseFeature('canExportSQL') && (
         <div className="mt-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
@@ -129,6 +176,29 @@ const ExportDropdown: React.FC = () => {
         </>
       )}
     </div>
+
+      {/* Smart Export Modal */}
+      {showSmartExport && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Smart Export Manager
+              </h3>
+              <button
+                onClick={() => setShowSmartExport(false)}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="p-6">
+              <SmartExportManager />
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

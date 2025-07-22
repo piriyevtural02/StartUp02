@@ -5,7 +5,8 @@ A comprehensive, production-ready platform for designing, validating, collaborat
 ## 🚀 Features
 
 ### Core Database Design
-- **Advanced Table Builder**: Create tables with real-time FK validation and constraint checking
+- **Enhanced Table Builder**: Create tables with real-time FK validation and constraint checking
+- **Collapsible Panels**: Expandable/collapsible Tools and Portfolio panels for better workspace management
 - **Dynamic Relationship Management**: Visual arrows with live updates and comprehensive relationship panel
 - **SQL Anomaly Prevention**: Real-time validation with business rule enforcement
 - **Smart Export System**: Export to multiple formats with intelligent naming
@@ -14,13 +15,13 @@ A comprehensive, production-ready platform for designing, validating, collaborat
 - **Live Team Collaboration**: Real-time cursors, presence indicators, and schema synchronization
 - **WebSocket Integration**: Instant updates across all connected users
 - **Role-based Permissions**: Admin, Editor, and Viewer roles with granular access control
-- **Operational Transform**: Conflict resolution for concurrent edits
+- **Real Database Integration**: Shared databases appear automatically in team members' portfolios
 
 ### Advanced Tools
-- **Live SQL Editor**: Monaco-based editor with real-time parsing and schema updates
+- **Categorized Tools Panel**: Organized by Schema Design, Validation, Import/Export, and Collaboration
 - **Schema Validation**: Comprehensive anomaly detection with auto-fix suggestions
-- **Audit Trail**: Complete history of schema changes with undo/redo capabilities
-- **Multi-format Export**: Support for MySQL, PostgreSQL, MongoDB, TypeScript, Prisma, and more
+- **Smart Export Manager**: Support for MySQL, PostgreSQL, MongoDB, JSON, CSV with project-based naming
+- **Centered Modal Windows**: All dialogs open centered over the workspace
 
 ## 🛠 Technical Architecture
 
@@ -28,7 +29,6 @@ A comprehensive, production-ready platform for designing, validating, collaborat
 - **React 18** with TypeScript
 - **Tailwind CSS** for styling
 - **React Flow** for diagram visualization
-- **Monaco Editor** for SQL editing
 - **Framer Motion** for animations
 - **WebSocket** for real-time features
 
@@ -41,9 +41,9 @@ A comprehensive, production-ready platform for designing, validating, collaborat
 
 ### Real-time Collaboration
 - **WebSocket connections** for live updates
-- **Operational Transform** for conflict resolution
+- **Real-time schema synchronization** across all connected users
 - **Presence awareness** with live cursors
-- **Event sourcing** for audit trails
+- **Automatic portfolio updates** when databases are shared
 
 ## 📦 Installation
 
@@ -51,14 +51,8 @@ A comprehensive, production-ready platform for designing, validating, collaborat
 # Install dependencies
 npm install
 
-# Start development server
+# Start development server (includes WebSocket server)
 npm run dev
-
-# Start backend server (in separate terminal)
-npm run server
-
-# Run tests
-npm test
 
 # Build for production
 npm run build
@@ -91,67 +85,40 @@ WS_PORT=8080
 The platform includes a WebSocket server for real-time collaboration:
 
 ```javascript
-// server/websocket.js
-const WebSocket = require('ws');
-const wss = new WebSocket.Server({ port: 8080 });
+# Start WebSocket server
+npm run ws-server
 
-wss.on('connection', (ws, req) => {
-  // Handle collaboration events
-  ws.on('message', (message) => {
-    const data = JSON.parse(message);
-    // Broadcast to other clients
-    wss.clients.forEach(client => {
-      if (client !== ws && client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify(data));
-      }
-    });
-  });
-});
+# Or start both servers together
+npm run dev
 ```
 
 ## 🎯 Usage Guide
 
-### 1. Advanced Table Creation
-- Use the Advanced Table Builder for FK validation
+### 1. Enhanced Table Creation
+- Use the Enhanced Table Builder for FK validation
 - Real-time constraint checking prevents SQL anomalies
 - Dynamic relationship arrows update automatically
 
 ### 2. Real-time Collaboration
 - Multiple users can edit simultaneously
-- Live cursors show where others are working
+- Shared databases appear automatically in team portfolios
 - Changes sync instantly across all clients
+- Access revocation removes databases immediately
 
-### 3. SQL Validation
+### 3. Collapsible Interface
+- Collapse Tools and Portfolio panels for more workspace
+- Categorized tools for better organization
+- Centered modal windows for better UX
+
+### 4. SQL Validation
 - Automatic anomaly detection
 - Business rule enforcement
 - Auto-fix suggestions for common issues
 
-### 4. Smart Export
-- Multiple format support
-- Intelligent filename generation based on project name
+### 5. Smart Export
+- Multiple format support (SQL, JSON, CSV)
+- Project-based filename generation
 - Export history tracking
-
-## 🧪 Testing
-
-### Unit Tests
-```bash
-npm run test:unit
-```
-
-### Integration Tests
-```bash
-npm run test:integration
-```
-
-### E2E Tests
-```bash
-npm run test:e2e
-```
-
-### Test Coverage
-```bash
-npm run test:coverage
-```
 
 ## 🚀 Deployment
 
@@ -163,63 +130,15 @@ COPY package*.json ./
 RUN npm ci --only=production
 COPY . .
 RUN npm run build
-EXPOSE 3000 8080
+EXPOSE 5000 8080
 CMD ["npm", "start"]
 ```
 
-### Kubernetes Manifests
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: database-designer
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: database-designer
-  template:
-    metadata:
-      labels:
-        app: database-designer
-    spec:
-      containers:
-      - name: app
-        image: database-designer:latest
-        ports:
-        - containerPort: 3000
-        - containerPort: 8080
-```
-
-## 📊 Monitoring & Analytics
-
-### Sentry Integration
-```javascript
-import * as Sentry from "@sentry/react";
-
-Sentry.init({
-  dsn: "your-sentry-dsn",
-  integrations: [new Sentry.BrowserTracing()],
-  tracesSampleRate: 1.0,
-});
-```
-
-### Prometheus Metrics
-- WebSocket connection count
-- Schema validation errors
-- Export success rates
-- User collaboration metrics
-
-## 🌍 Internationalization
-
-The platform is prepared for i18n with react-i18next:
-
-```javascript
-import { useTranslation } from 'react-i18next';
-
-const { t } = useTranslation();
-return <h1>{t('welcome.title')}</h1>;
-```
+### Production Setup
+1. Set up MongoDB database
+2. Configure environment variables
+3. Start both HTTP and WebSocket servers
+4. Configure reverse proxy (nginx) for WebSocket support
 
 ## 🔐 Security Features
 
@@ -228,17 +147,23 @@ return <h1>{t('welcome.title')}</h1>;
 - **Input Validation** and sanitization
 - **SQL Injection Prevention**
 - **XSS Protection**
-- **CSRF Protection**
-- **Rate Limiting**
+- **WebSocket Authentication**
 
 ## 📈 Performance Optimizations
 
-- **Code Splitting** with React.lazy
+- **Collapsible Panels** for reduced DOM complexity
 - **Memoization** for expensive computations
-- **Virtual Scrolling** for large datasets
 - **WebSocket Connection Pooling**
 - **Debounced Real-time Updates**
 - **Optimistic UI Updates**
+
+## 🎨 UI/UX Enhancements
+
+- **Collapsible Panels**: Tools and Portfolio panels can be collapsed for more workspace
+- **Categorized Tools**: Organized by Schema Design, Validation, Import/Export, and Collaboration
+- **Centered Modals**: All dialogs open centered over the workspace
+- **Smart Export**: Project-based filename generation
+- **Real-time Validation**: Instant feedback on schema changes
 
 ## 🤝 Contributing
 
@@ -252,7 +177,7 @@ return <h1>{t('welcome.title')}</h1>;
 - ESLint + Prettier configuration
 - TypeScript strict mode
 - Conventional commit messages
-- 100% test coverage for critical paths
+- Component-based architecture
 
 ## 📄 License
 
@@ -260,30 +185,28 @@ MIT License - see LICENSE file for details
 
 ## 🆘 Support
 
-- Documentation: [docs.database-designer.com](https://docs.database-designer.com)
 - Issues: [GitHub Issues](https://github.com/your-org/database-designer/issues)
-- Discord: [Community Server](https://discord.gg/database-designer)
-- Email: support@database-designer.com
+- Email: piriyevtural00@gmail.com
 
 ## 🗺 Roadmap
 
 ### Q1 2025
-- [ ] GraphQL API integration
-- [ ] Advanced ORM support (Sequelize, TypeORM)
-- [ ] Database migration generation
-- [ ] Performance analytics dashboard
+- [x] Collapsible panel interface
+- [x] Enhanced table builder with FK validation
+- [x] Real-time collaboration with WebSocket
+- [x] Smart export with project-based naming
 
 ### Q2 2025
-- [ ] AI-powered schema suggestions
-- [ ] Advanced conflict resolution
-- [ ] Multi-database support
-- [ ] Enterprise SSO integration
+- [ ] Advanced SQL editor with Monaco
+- [ ] Schema versioning and history
+- [ ] Advanced export formats (TypeScript, Prisma)
+- [ ] Performance monitoring
 
 ### Q3 2025
-- [ ] Mobile app companion
-- [ ] Advanced visualization options
-- [ ] Custom plugin system
-- [ ] Enterprise audit features
+- [ ] AI-powered schema suggestions
+- [ ] Advanced collaboration features
+- [ ] Enterprise SSO integration
+- [ ] Mobile responsive design
 
 ---
 

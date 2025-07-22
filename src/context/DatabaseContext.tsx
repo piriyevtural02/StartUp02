@@ -449,6 +449,15 @@ export const DatabaseProvider: React.FC<DatabaseProviderProps> = ({ children }) 
       updatedAt: new Date(),
     }));
 
+    // Broadcast schema change for real-time collaboration
+    if (window.collaborationService) {
+      window.collaborationService.sendSchemaChange({
+        type: 'table_created',
+        data: { table: newTable },
+        userId: 'current_user',
+        timestamp: new Date()
+      });
+    }
     // Create table in SQL engine
     if (sqlEngine) {
       const columnDefs = newTable.columns.map(col => {
@@ -472,6 +481,15 @@ export const DatabaseProvider: React.FC<DatabaseProviderProps> = ({ children }) 
     const table = currentSchema.tables.find(t => t.id === tableId);
     if (!table) return;
 
+    // Broadcast schema change for real-time collaboration
+    if (window.collaborationService) {
+      window.collaborationService.sendSchemaChange({
+        type: 'table_deleted',
+        data: { tableId, tableName: table.name },
+        userId: 'current_user',
+        timestamp: new Date()
+      });
+    }
     setCurrentSchema(prev => ({
       ...prev,
       tables: prev.tables.filter(table => table.id !== tableId),
@@ -495,6 +513,15 @@ export const DatabaseProvider: React.FC<DatabaseProviderProps> = ({ children }) 
   }, [currentSchema.tables, sqlEngine]);
 
   const updateTable = useCallback((tableId: string, updates: Partial<Table>) => {
+    // Broadcast schema change for real-time collaboration
+    if (window.collaborationService) {
+      window.collaborationService.sendSchemaChange({
+        type: 'table_updated',
+        data: { tableId, updates },
+        userId: 'current_user',
+        timestamp: new Date()
+      });
+    }
     setCurrentSchema(prev => ({
       ...prev,
       tables: prev.tables.map(table =>

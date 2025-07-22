@@ -89,20 +89,11 @@ const SmartExportManager: React.FC = () => {
       extension: 'json'
     },
     {
-      id: 'typescript',
-      name: 'TypeScript',
-      description: 'TypeScript type definitions',
-      icon: '📘',
-      extension: 'ts',
-      requiresPro: true
-    },
-    {
-      id: 'prisma',
-      name: 'Prisma Schema',
-      description: 'Prisma ORM schema file',
-      icon: '⚡',
-      extension: 'prisma',
-      requiresPro: true
+      id: 'csv',
+      name: 'CSV Export',
+      description: 'Table structure as CSV',
+      icon: '📊',
+      extension: 'csv'
     }
   ];
 
@@ -127,11 +118,8 @@ const SmartExportManager: React.FC = () => {
         case 'json':
           content = generateJSONExport();
           break;
-        case 'typescript':
-          content = generateTypeScriptExport();
-          break;
-        case 'prisma':
-          content = generatePrismaExport();
+        case 'csv':
+          content = generateCSVExport();
           break;
         default:
           content = exportSchema(selectedFormat);
@@ -144,8 +132,7 @@ const SmartExportManager: React.FC = () => {
 
       // Generate smart filename based on project name
       const projectName = currentSchema.name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-      const timestamp = new Date().toISOString().slice(0, 10);
-      const filename = `${projectName}_${timestamp}.${format.extension}`;
+      const filename = `${projectName}.${format.extension}`;
 
       // Create and download file
       const blob = new Blob([content], { type: 'text/plain' });
@@ -214,42 +201,16 @@ const SmartExportManager: React.FC = () => {
     return JSON.stringify(exportData, null, 2);
   };
 
-  const generateTypeScriptExport = (): string => {
-    let content = `// Generated TypeScript definitions for ${currentSchema.name}\n\n`;
+  const generateCSVExport = (): string => {
+    let csv = 'Table,Column,Type,Nullable,Primary Key,Unique,Default Value\n';
     
     currentSchema.tables.forEach(table => {
-      content += `export interface ${toPascalCase(table.name)} {\n`;
       table.columns.forEach(col => {
-        const tsType = sqlTypeToTypeScript(col.type);
-        const optional = col.nullable ? '?' : '';
-        content += `  ${col.name}${optional}: ${tsType};\n`;
+        csv += `${table.name},${col.name},${col.type},${col.nullable ? 'Yes' : 'No'},${col.isPrimaryKey ? 'Yes' : 'No'},${col.isUnique ? 'Yes' : 'No'},${col.defaultValue || ''}\n`;
       });
-      content += `}\n\n`;
     });
 
-    return content;
-  };
-
-  const generatePrismaExport = (): string => {
-    let content = `// Prisma schema for ${currentSchema.name}\n\n`;
-    content += `generator client {\n  provider = "prisma-client-js"\n}\n\n`;
-    content += `datasource db {\n  provider = "mysql"\n  url      = env("DATABASE_URL")\n}\n\n`;
-    
-    currentSchema.tables.forEach(table => {
-      content += `model ${toPascalCase(table.name)} {\n`;
-      table.columns.forEach(col => {
-        const prismaType = sqlTypeToPrisma(col.type);
-        const modifiers = [];
-        if (col.isPrimaryKey) modifiers.push('@id');
-        if (col.isUnique) modifiers.push('@unique');
-        if (col.defaultValue) modifiers.push(`@default(${col.defaultValue})`);
-        
-        content += `  ${col.name} ${prismaType}${col.nullable ? '?' : ''} ${modifiers.join(' ')}\n`;
-      });
-      content += `}\n\n`;
-    });
-
-    return content;
+    return csv;
   };
 
   const formatSQLOutput = (sql: string): string => {
@@ -261,29 +222,6 @@ const SmartExportManager: React.FC = () => {
       .replace(/;/g, ';\n')
       .replace(/\n\s*\n/g, '\n\n')
       .trim();
-  };
-
-  const sqlTypeToTypeScript = (sqlType: string): string => {
-    const type = sqlType.toUpperCase();
-    if (type.includes('INT') || type.includes('DECIMAL') || type.includes('FLOAT')) return 'number';
-    if (type.includes('BOOLEAN') || type.includes('BIT')) return 'boolean';
-    if (type.includes('DATE') || type.includes('TIME')) return 'Date';
-    if (type.includes('JSON')) return 'object';
-    return 'string';
-  };
-
-  const sqlTypeToPrisma = (sqlType: string): string => {
-    const type = sqlType.toUpperCase();
-    if (type.includes('INT')) return 'Int';
-    if (type.includes('DECIMAL') || type.includes('FLOAT')) return 'Float';
-    if (type.includes('BOOLEAN')) return 'Boolean';
-    if (type.includes('DATE')) return 'DateTime';
-    if (type.includes('JSON')) return 'Json';
-    return 'String';
-  };
-
-  const toPascalCase = (str: string): string => {
-    return str.replace(/(^\w|_\w)/g, match => match.replace('_', '').toUpperCase());
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -298,15 +236,15 @@ const SmartExportManager: React.FC = () => {
     <div className="h-full flex flex-col p-4">
       <div className="mb-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Smart Export Manager
+          Smart Export
         </h3>
 
-        {/* Export Format Selection */}
+        {/* Export Format Selection - Two Column Layout */}
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
             Export Format
           </label>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             {exportFormats.map(format => {
               const isDisabled = format.requiresPro && !canUseFeature('canExportSQL');
               
@@ -315,7 +253,7 @@ const SmartExportManager: React.FC = () => {
                   key={format.id}
                   onClick={() => !isDisabled && setSelectedFormat(format.id)}
                   disabled={isDisabled}
-                  className={`p-4 border-2 rounded-lg text-left transition-all duration-200 ${
+                  className={`p-3 border-2 rounded-lg text-left transition-all duration-200 ${
                     selectedFormat === format.id
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                       : isDisabled
@@ -323,24 +261,24 @@ const SmartExportManager: React.FC = () => {
                       : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                   }`}
                 >
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="text-2xl">{format.icon}</span>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">{format.icon}</span>
                     <div className="flex-1">
-                      <div className="font-medium text-gray-900 dark:text-white">
+                      <div className="font-medium text-gray-900 dark:text-white text-sm">
                         {format.name}
                         {format.requiresPro && !canUseFeature('canExportSQL') && (
-                          <span className="ml-2 text-xs bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 px-2 py-1 rounded">
+                          <span className="ml-1 text-xs bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 px-1 rounded">
                             Pro
                           </span>
                         )}
                       </div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">
-                        {format.description}
-                      </div>
                     </div>
                     {selectedFormat === format.id && (
-                      <Check className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                      <Check className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                     )}
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    {format.description}
                   </div>
                 </button>
               );
@@ -348,50 +286,50 @@ const SmartExportManager: React.FC = () => {
           </div>
         </div>
 
-        {/* Export Options */}
+        {/* Export Options - Toggle Switches */}
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
             Export Options
           </label>
-          <div className="grid grid-cols-2 gap-4">
-            <label className="flex items-center gap-2">
+          <div className="space-y-3">
+            <label className="flex items-center justify-between">
+              <span className="text-sm text-gray-700 dark:text-gray-300">Include sample data</span>
               <input
                 type="checkbox"
                 checked={exportOptions.includeData}
                 onChange={(e) => setExportOptions(prev => ({ ...prev, includeData: e.target.checked }))}
                 className="rounded border-gray-300 text-sky-600 focus:ring-sky-500"
               />
-              <span className="text-sm text-gray-700 dark:text-gray-300">Include sample data</span>
             </label>
             
-            <label className="flex items-center gap-2">
+            <label className="flex items-center justify-between">
+              <span className="text-sm text-gray-700 dark:text-gray-300">Include indexes</span>
               <input
                 type="checkbox"
                 checked={exportOptions.includeIndexes}
                 onChange={(e) => setExportOptions(prev => ({ ...prev, includeIndexes: e.target.checked }))}
                 className="rounded border-gray-300 text-sky-600 focus:ring-sky-500"
               />
-              <span className="text-sm text-gray-700 dark:text-gray-300">Include indexes</span>
             </label>
             
-            <label className="flex items-center gap-2">
+            <label className="flex items-center justify-between">
+              <span className="text-sm text-gray-700 dark:text-gray-300">Include constraints</span>
               <input
                 type="checkbox"
                 checked={exportOptions.includeConstraints}
                 onChange={(e) => setExportOptions(prev => ({ ...prev, includeConstraints: e.target.checked }))}
                 className="rounded border-gray-300 text-sky-600 focus:ring-sky-500"
               />
-              <span className="text-sm text-gray-700 dark:text-gray-300">Include constraints</span>
             </label>
             
-            <label className="flex items-center gap-2">
+            <label className="flex items-center justify-between">
+              <span className="text-sm text-gray-700 dark:text-gray-300">Format output</span>
               <input
                 type="checkbox"
                 checked={exportOptions.formatOutput}
                 onChange={(e) => setExportOptions(prev => ({ ...prev, formatOutput: e.target.checked }))}
                 className="rounded border-gray-300 text-sky-600 focus:ring-sky-500"
               />
-              <span className="text-sm text-gray-700 dark:text-gray-300">Format output</span>
             </label>
           </div>
         </div>
@@ -400,7 +338,7 @@ const SmartExportManager: React.FC = () => {
         <button
           onClick={handleExport}
           disabled={isExporting || currentSchema.tables.length === 0}
-          className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg transition-colors duration-200 font-medium"
+          className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg transition-colors duration-200 font-medium"
         >
           {isExporting ? (
             <>

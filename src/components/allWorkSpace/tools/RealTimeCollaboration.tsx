@@ -5,6 +5,8 @@ import {
 } from 'lucide-react';
 import { useSubscription } from '../../../context/SubscriptionContext';
 import { useDatabase } from '../../../context/DatabaseContext';
+import { useWebSocket } from '../../../hooks/useWebSocket';
+import { usePortfolio } from '../../../context/PortfolioContext';
 
 interface CollaboratorCursor {
   userId: string;
@@ -26,7 +28,10 @@ interface CollaboratorPresence {
   currentAction?: string;
   joinedAt: Date;
   avatar?: string;
-}
+    syncWorkspaceWithMongoDB,
+    updateTable,
+    addTable,
+    removeTable
 
 interface RealtimeEvent {
   id: string;
@@ -39,6 +44,7 @@ interface RealtimeEvent {
 
 const RealTimeCollaboration: React.FC = () => {
   const { currentPlan } = useSubscription();
+  const { loadPortfolios } = usePortfolio();
   const { currentSchema } = useDatabase();
   
   const [isConnected, setIsConnected] = useState(false);
@@ -51,9 +57,95 @@ const RealTimeCollaboration: React.FC = () => {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   const heartbeatIntervalRef = useRef<NodeJS.Interval>();
+  // WebSocket connection for real-time collaboration
+  const { isConnected, sendMessage, lastMessage } = useWebSocket({
+    url: `ws://localhost:8080/collaboration/${currentSchema.id}`,
+    onOpen: () => {
+      setCollaborationStatus(prev => ({ ...prev, isConnected: true }));
+      // Send join event
+      sendMessage({
+        type: 'user_join',
+        userId: 'current_user',
+        username: 'current_user',
+        schemaId: currentSchema.id
+      });
+    },
+    onClose: () => {
+      setCollaborationStatus(prev => ({ ...prev, isConnected: false }));
+    },
+    onMessage: (message) => {
+      handleRealtimeMessage(message);
+    }
+  });
 
-  // Mock data for demonstration
-  useEffect(() => {
+  const handleRealtimeMessage = (message: any) => {
+    switch (message.type) {
+      case 'schema_shared':
+        // Refresh portfolio to show newly shared database
+        loadPortfolios();
+        break;
+        
+      case 'schema_change':
+        // Apply schema changes from other users
+        applySchemaChange(message.data);
+        break;
+        
+      case 'access_revoked':
+        // Remove database from portfolio if access revoked
+        if (message.data.userId === 'current_user') {
+          loadPortfolios();
+        }
+        break;
+        
+      case 'user_joined':
+        setCollaborationStatus(prev => ({
+          ...prev,
+          activeUsers: prev.activeUsers + 1
+        }));
+        break;
+        
+      case 'user_left':
+        setCollaborationStatus(prev => ({
+          ...prev,
+          activeUsers: Math.max(1, prev.activeUsers - 1)
+        }));
+        break;
+    }
+  };
+
+  const applySchemaChange = (change: any) => {
+    switch (change.type) {
+      case 'table_created':
+        addTable(change.data.table);
+        break;
+      case 'table_updated':
+        updateTable(change.data.tableId, change.data.updates);
+        break;
+      case 'table_deleted':
+        removeTable(change.data.tableId);
+        break;
+    }
+    
+    setCollaborationStatus(prev => ({
+      ...prev,
+      lastSync: new Date()
+    }));
+  };
+
+  const broadcastSchemaChange = (type: string, data: any) => {
+    if (isConnected) {
+      sendMessage({
+        type: 'schema_change',
+        data: {
+          type,
+          data,
+          userId: 'current_user',
+          schemaId: currentSchema.id
+        }
+      });
+    }
+  };
+
     if (currentPlan === 'ultimate') {
       // Simulate real-time collaboration
       setIsConnected(true);
@@ -73,26 +165,13 @@ const RealTimeCollaboration: React.FC = () => {
           role: 'viewer',
           status: 'online',
           currentAction: 'Viewing schema',
-          joinedAt: new Date(Date.now() - 600000),
-          avatar: '👨‍🎨'
-        }
-      ]);
-
-      setCursors([
-        {
-          userId: 'user1',
-          username: 'alice_dev',
-          position: { x: 250, y: 150 },
-          selection: { tableId: 'table1', columnId: 'col1' },
-          color: '#3B82F6',
-          lastSeen: new Date()
-        }
-      ]);
-
-      setRealtimeEvents([
-        {
-          id: '1',
-          type: 'table_created',
+  // Update collaboration status based on WebSocket connection
+  useEffect(() => {
+    setCollaborationStatus(prev => ({
+      ...prev,
+      isConnected
+    }));
+  }, [isConnected]);
           userId: 'user1',
           username: 'alice_dev',
           timestamp: new Date(Date.now() - 120000),
@@ -112,6 +191,17 @@ const RealTimeCollaboration: React.FC = () => {
 
   const initializeWebSocket = () => {
     if (currentPlan !== 'ultimate') return;
+      // Broadcast schema sharing event
+      if (isConnected) {
+        sendMessage({
+          type: 'schema_shared',
+          data: {
+            schemaId: currentSchema.id,
+            inviteeUsername: inviteUsername,
+            role: inviteRole
+          }
+        });
+      }
 
     try {
       // In a real implementation, this would connect to your WebSocket server
@@ -221,6 +311,16 @@ const RealTimeCollaboration: React.FC = () => {
         type: 'cursor_update',
         cursor: {
           userId: 'current_user',
+      // Broadcast access revocation
+      if (isConnected) {
+        sendMessage({
+          type: 'access_revoked',
+          data: {
+            userId: member.username,
+            schemaId: currentSchema.id
+          }
+        });
+      }
           username: 'current_user',
           position: { x, y },
           selection,

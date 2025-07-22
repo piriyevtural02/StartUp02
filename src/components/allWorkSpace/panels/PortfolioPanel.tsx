@@ -1,14 +1,37 @@
 import React, { useState } from 'react';
-import { ArrowRight, MessageSquare } from 'lucide-react';
+import { ArrowRight, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
 import PortfolioManager from '../portfolio/PortfolioManager';
 import ChatInterface from '../chat/ChatInterface';
 
 const PortfolioPanel: React.FC = () => {
   const [activeSection, setActiveSection] = useState<'portfolio' | 'chat'>('portfolio');
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
     <div className="h-full flex flex-col bg-white dark:bg-gray-900 pt-16 lg:pt-0">
-      {/* Section Tabs */}
+      {/* Header with Collapse Toggle */}
+      <div className="border-b border-gray-200 dark:border-gray-700 p-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Portfolio & AI
+          </h3>
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors duration-200"
+            title={isCollapsed ? "Expand portfolio panel" : "Collapse portfolio panel"}
+          >
+            {isCollapsed ? (
+              <ChevronDown className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+            ) : (
+              <ChevronUp className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {!isCollapsed && (
+        <>
+          {/* Section Tabs */}
       <div className="border-b border-gray-200 dark:border-gray-700">
         <nav className="flex" aria-label="Portfolio sections">
           <button
@@ -48,6 +71,8 @@ const PortfolioPanel: React.FC = () => {
         {activeSection === 'portfolio' && <PortfolioManager />}
         {activeSection === 'chat' && <ChatInterface />}
       </div>
+        </>
+      )}
     </div>
   );
 };
